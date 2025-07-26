@@ -14,6 +14,7 @@ import { ContactForm } from '@/components/ContactForm';
 import InteractionSection from '@/components/InteractionSection';
 import { QuickActions } from '@/components/QuickActions';
 import { AddReminderModal } from '@/components/AddReminderModal';
+import { SmartContactSummary } from '@/components/SmartContactSummary';
 import { format, formatDistanceToNow } from 'date-fns';
 
 export default function ContactProfilePage() {
@@ -85,20 +86,7 @@ export default function ContactProfilePage() {
     );
   }
 
-  const getInteractionStats = () => {
-    const total = contactInteractions.length;
-    const recent = contactInteractions.filter(i => {
-      const date = new Date(i.createdAt!);
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return date > weekAgo;
-    }).length;
-    const pending = contactInteractions.filter(i => i.followUpRequired && !i.isDone).length;
 
-    return { total, recent, pending };
-  };
-
-  const stats = getInteractionStats();
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -216,25 +204,14 @@ export default function ContactProfilePage() {
           </div>
         </CardHeader>
 
-        {/* Quick Stats */}
+        {/* Smart Contact Summary */}
         <CardContent className="pt-0">
           <Separator className="mb-4" />
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">{stats.total}</div>
-              <div className="text-sm text-muted-foreground">Total Interactions</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{stats.recent}</div>
-              <div className="text-sm text-muted-foreground">Recent (7 days)</div>
-            </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${stats.pending > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                {stats.pending}
-              </div>
-              <div className="text-sm text-muted-foreground">Pending Follow-ups</div>
-            </div>
-          </div>
+          <SmartContactSummary 
+            interactions={interactions}
+            contactId={contactId}
+            contactName={contact.name}
+          />
         </CardContent>
       </Card>
 
@@ -348,16 +325,16 @@ export default function ContactProfilePage() {
               </div>
               
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <span className="text-sm font-medium">Interaction Rate</span>
-                <Badge variant="outline">
-                  {stats.total > 0 ? `${Math.round((stats.recent / stats.total) * 100)}%` : "0%"}
+                <span className="text-sm font-medium">Contact Status</span>
+                <Badge variant={contact.flagged ? "destructive" : "secondary"}>
+                  {contact.flagged ? "Flagged" : "Active"}
                 </Badge>
               </div>
               
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <span className="text-sm font-medium">Follow-up Rate</span>
-                <Badge variant={stats.pending > 0 ? "destructive" : "outline"}>
-                  {stats.total > 0 ? `${Math.round((stats.pending / stats.total) * 100)}%` : "0%"}
+                <span className="text-sm font-medium">Total Interactions</span>
+                <Badge variant="outline">
+                  {contactInteractions.length}
                 </Badge>
               </div>
             </div>
