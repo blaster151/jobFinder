@@ -4,7 +4,7 @@
 
 - [x] Add `Contact` and `Interaction` schemas using Zod
 - [x] Create JSON store for contact data and linked interactions
-- [ ] Build UI to list, search, and filter contacts (with "flagged" toggle)
+- [x] Build UI to list, search, and filter contacts (with "flagged" toggle)
 - [x] Add drawer/modal UI for adding a new contact
 - [x] Build interaction timeline view per contact
 - [ ] Link interactions to jobs or submissions where applicable
