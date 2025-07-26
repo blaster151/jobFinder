@@ -2,11 +2,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useReminderCount } from '@/stores/reminderUtils';
+import { useContactStore } from '@/stores/contactStore';
+import { ReminderStatusService } from '@/lib/services/reminderStatusService';
 import { Bell } from 'lucide-react';
 
 export const ReminderBadge = () => {
-  const { total, overdue, upcoming, hidden } = useReminderCount();
+  const { interactions } = useContactStore();
+  
+  const stats = ReminderStatusService.getStats(interactions);
+  const total = stats.total;
+  const overdue = stats.overdue;
+  const upcoming = stats.dueSoon + stats.dueToday;
+  const hidden = false; // Always show if there are reminders
 
   if (hidden || total === 0) return null;
 

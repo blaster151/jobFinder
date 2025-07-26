@@ -1,5 +1,7 @@
 import { Interaction } from '@/lib/schemas';
-import { getReminderStatus, getRemindersByStatus } from '@/lib/reminderUtils';
+import { ReminderStatusService } from './reminderStatusService';
+import { FilterService } from './filterService';
+import { filterByDateRange, DateRange } from '@/lib/utils/dateUtils';
 
 export interface ReminderService {
   // Reminder categorization
@@ -48,11 +50,11 @@ export interface ReminderService {
 
 class ReminderServiceImpl implements ReminderService {
   categorizeReminders(interactions: Interaction[]) {
-    return getRemindersByStatus(interactions);
+    return ReminderStatusService.categorize(interactions);
   }
 
   getReminderStatus(interaction: Interaction) {
-    const status = getReminderStatus(interaction);
+    const status = ReminderStatusService.getStatus(interaction);
     return {
       isOverdue: status.isOverdue,
       isDueSoon: status.isDueSoon,
@@ -64,34 +66,13 @@ class ReminderServiceImpl implements ReminderService {
 
   filterRemindersByDateRange(
     interactions: Interaction[],
-    dateRange: 'all' | 'today' | 'week' | 'month'
+    dateRange: DateRange
   ): Interaction[] {
-    if (dateRange === 'all') {
-      return interactions;
-    }
-
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    return interactions.filter(interaction => {
-      if (!interaction.followUpDueDate) return false;
-      
-      const dueDate = new Date(interaction.followUpDueDate);
-      const dueDateStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-      
-      switch (dateRange) {
-        case 'today':
-          return dueDateStart.getTime() === today.getTime();
-        case 'week':
-          return dueDateStart >= weekAgo;
-        case 'month':
-          return dueDateStart >= monthAgo;
-        default:
-          return true;
-      }
-    });
+    return filterByDateRange(
+      interactions,
+      dateRange,
+      (interaction) => new Date(interaction.followUpDueDate!),
+    );
   }
 
   filterRemindersByStatus(
@@ -119,22 +100,14 @@ class ReminderServiceImpl implements ReminderService {
   }
 
   getReminderStats(interactions: Interaction[]) {
-    const categorized = this.categorizeReminders(interactions);
-    
-    return {
-      total: interactions.filter(i => i.followUpRequired && i.followUpDueDate).length,
-      overdue: categorized.overdue.length,
-      dueSoon: categorized.dueSoon.length,
-      dueToday: categorized.dueToday.length,
-      upcoming: categorized.upcoming.length,
-    };
+    return ReminderStatusService.getStats(interactions);
   }
 
   getNewlyOverdueReminders(
     currentOverdue: string[],
     previousOverdue: string[]
   ): string[] {
-    return currentOverdue.filter(id => !previousOverdue.includes(id));
+    return ReminderStatusService.getNewlyOverdue(currentOverdue, previousOverdue);
   }
 }
 

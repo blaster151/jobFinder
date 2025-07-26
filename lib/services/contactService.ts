@@ -1,4 +1,5 @@
 import { Contact, Interaction, ContactCreate, InteractionCreate } from '@/lib/schemas';
+import { ReminderStatusService } from './reminderStatusService';
 
 export interface ContactService {
   // Contact operations
@@ -140,17 +141,11 @@ class ContactServiceImpl implements ContactService {
 
   // Business logic methods
   getDueFollowUps(interactions: Interaction[]): Interaction[] {
-    const today = new Date();
-    return interactions.filter((i) =>
-      i.followUpRequired &&
-      i.followUpDueDate &&
-      !i.isDone &&
-      new Date(i.followUpDueDate) <= today
-    );
+    return ReminderStatusService.getOverdue(interactions);
   }
 
   getOverdueCount(interactions: Interaction[]): number {
-    return this.getDueFollowUps(interactions).length;
+    return ReminderStatusService.getOverdue(interactions).length;
   }
 
   getContactInteractions(contactId: string, interactions: Interaction[]): Interaction[] {

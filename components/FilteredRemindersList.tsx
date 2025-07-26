@@ -5,79 +5,25 @@ import { useContactStore } from '@/stores/contactStore';
 import { useFilterStore } from '@/stores/filterStore';
 import { ReminderRow } from './ReminderRow';
 import { ReminderFilterPanel } from './ReminderFilterPanel';
-import { format, isToday, isThisWeek, addDays, isAfter, isBefore } from 'date-fns';
+import { FilterService } from '@/lib/services/filterService';
+import { ReminderStatusService } from '@/lib/services/reminderStatusService';
 
 export function FilteredRemindersList() {
   const { interactions, contacts } = useContactStore();
   const { reminderFilters } = useFilterStore();
 
   const filteredReminders = useMemo(() => {
-    let filtered = interactions.filter((i) => i.followUpRequired && i.followUpDueDate && !i.isDone);
+    // Use the unified filter service
+    const filterOptions = {
+      dateRange: reminderFilters.dueDate as any,
+      type: reminderFilters.type as any,
+      status: reminderFilters.status as any,
+    };
 
-    // Apply due date filter
-    if (reminderFilters.dueDate !== 'all') {
-      const now = new Date();
-      const today = new Date();
-      const next3Days = addDays(today, 3);
-      const endOfWeek = addDays(today, 7);
-
-      filtered = filtered.filter((i) => {
-        const dueDate = new Date(i.followUpDueDate!);
-        
-        switch (reminderFilters.dueDate) {
-          case 'today':
-            return isToday(dueDate);
-          case 'next3days':
-            return isAfter(dueDate, today) && isBefore(dueDate, next3Days);
-          case 'thisWeek':
-            return isThisWeek(dueDate);
-          case 'overdue':
-            return isBefore(dueDate, today);
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Apply type filter
-    if (reminderFilters.type !== 'all') {
-      filtered = filtered.filter((i) => {
-        // Map interaction types to reminder types
-        const typeMapping: Record<string, string> = {
-          'email': 'follow-up',
-          'phone': 'check-in',
-          'text': 'check-in',
-          'dm': 'follow-up',
-          'in_person': 'custom',
-        };
-        
-        const reminderType = typeMapping[i.type] || 'custom';
-        return reminderType === reminderFilters.type;
-      });
-    }
-
-    // Apply status filter
-    if (reminderFilters.status !== 'all') {
-      filtered = filtered.filter((i) => {
-        const isDone = !i.followUpRequired;
-        return reminderFilters.status === 'done' ? isDone : !isDone;
-      });
-    }
-
+    const result = FilterService.filterReminders(interactions, filterOptions);
+    
     // Sort by due date (overdue first, then by date)
-    return filtered.sort((a, b) => {
-      const aDate = new Date(a.followUpDueDate!);
-      const bDate = new Date(b.followUpDueDate!);
-      const now = new Date();
-      
-      const aOverdue = isBefore(aDate, now);
-      const bOverdue = isBefore(bDate, now);
-      
-      if (aOverdue && !bOverdue) return -1;
-      if (!aOverdue && bOverdue) return 1;
-      
-      return aDate.getTime() - bDate.getTime();
-    });
+    return FilterService.sortInteractions(result.items, 'dueDate', 'asc');
   }, [interactions, reminderFilters]);
 
   const getFilterSummary = () => {

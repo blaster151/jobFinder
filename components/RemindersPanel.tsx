@@ -4,16 +4,13 @@
 import { useContactStore } from '@/stores/contactStore';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { ReminderStatusService } from '@/lib/services/reminderStatusService';
 
 export const RemindersPanel = () => {
   const interactions = useContactStore((s) => s.interactions);
   const contacts = useContactStore((s) => s.contacts);
 
-  const due = interactions.filter((i) => {
-    if (!i.followUpRequired || !i.followUpDueDate) return false;
-    const dueDate = new Date(i.followUpDueDate);
-    return dueDate <= new Date();
-  });
+  const due = ReminderStatusService.getOverdue(interactions);
 
   const getDaysOverdue = (dueDate: string) => {
     const due = new Date(dueDate);
@@ -51,7 +48,7 @@ export const RemindersPanel = () => {
                   </div>
                 </div>
                 <div className="text-muted-foreground text-sm mb-2">
-                  {i.type} logged on {new Date(i.timestamp).toLocaleDateString()}
+                  {i.type} logged on {new Date(i.createdAt!).toLocaleDateString()}
                 </div>
                 <div className="text-sm mb-2">
                   <strong>Summary:</strong> {i.summary}

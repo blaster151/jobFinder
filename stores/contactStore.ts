@@ -22,8 +22,7 @@ interface ContactStore {
   snoozeReminder: (interactionId: string, newDate: Date) => Promise<void>;
   fetchContacts: () => Promise<void>;
   fetchInteractions: () => Promise<void>;
-  getDueFollowUps: () => Interaction[];
-  getOverdueCount: () => number;
+  // Removed: getDueFollowUps and getOverdueCount - use ReminderStatusService instead
 }
 
 export const useContactStore = create<ContactStore>((set, get) => ({
@@ -167,22 +166,5 @@ export const useContactStore = create<ContactStore>((set, get) => ({
       set({ isLoading: false });
     }
   },
-  getDueFollowUps: () => {
-    const today = new Date();
-    return get().interactions.filter((i) =>
-      i.followUpRequired &&
-      i.followUpDueDate &&
-      !i.isDone &&
-      new Date(i.followUpDueDate) <= today
-    );
-  },
-  getOverdueCount: () => {
-    const today = new Date();
-    return get().interactions.filter((i) =>
-      i.followUpRequired &&
-      i.followUpDueDate &&
-      !i.isDone &&
-      new Date(i.followUpDueDate) <= today
-    ).length;
-  },
+  // Legacy methods removed - use ReminderStatusService instead
 })); 

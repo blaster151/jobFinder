@@ -1,4 +1,4 @@
-import { reminderService } from './reminderService';
+import { ReminderStatusService } from './reminderStatusService';
 
 export interface PollingService {
   // Timer management
@@ -94,15 +94,15 @@ class PollingServiceImpl implements PollingService {
   } {
     const now = new Date();
     
-    // Use the reminder service to categorize reminders
-    const categorized = reminderService.categorizeReminders(interactions);
+    // Use the reminder status service to categorize reminders
+    const categorized = ReminderStatusService.categorize(interactions, now);
     
     const currentOverdue = categorized.overdue.map(i => i.id!);
     const currentDueSoon = categorized.dueSoon.map(i => i.id!);
     const currentDueToday = categorized.dueToday.map(i => i.id!);
     
     // Find newly overdue reminders
-    const newlyOverdue = reminderService.getNewlyOverdueReminders(
+    const newlyOverdue = ReminderStatusService.getNewlyOverdue(
       currentOverdue,
       previousOverdue
     );

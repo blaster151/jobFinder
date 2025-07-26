@@ -2,7 +2,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Interaction, useContactStore } from '@/stores/contactStore';
+import { Interaction } from '@/lib/schemas';
+import { useContactStore } from '@/stores/contactStore';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button';
 interface InteractionFormProps {
   contactId?: string;
   jobId?: string;
-  onSubmit?: (interaction: Omit<Interaction, 'id' | 'timestamp'>) => void;
+  onSubmit?: (interaction: Omit<Interaction, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onCancel?: () => void;
 }
 
@@ -29,13 +30,15 @@ export const InteractionForm = ({ contactId, jobId, onSubmit, onCancel }: Intera
   const handleSubmit = () => {
     if (!form.summary.trim() || !contactId) return;
 
-    const interaction: Omit<Interaction, 'id' | 'timestamp'> = {
+    const interaction: Omit<Interaction, 'id' | 'createdAt' | 'updatedAt'> = {
       contactId,
       jobId,
       type: form.type,
       summary: form.summary,
       followUpRequired: form.followUpRequired,
       followUpDueDate: form.followUpDueDate || undefined,
+      isDone: false,
+      tags: [],
     };
 
     addInteraction(interaction);

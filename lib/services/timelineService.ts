@@ -1,5 +1,12 @@
 import { Interaction, Contact } from '@/lib/schemas';
-import { format, isToday, isThisWeek, isThisMonth, isYesterday, startOfDay, differenceInDays } from 'date-fns';
+import { format } from 'date-fns';
+import { 
+  filterByDateRange, 
+  groupByDateRange, 
+  DateRange, 
+  DATE_RANGES 
+} from '@/lib/utils/dateUtils';
+import { ReminderStatusService } from './reminderStatusService';
 
 export interface TimelineItem {
   id: string;
@@ -119,34 +126,20 @@ class TimelineServiceImpl implements TimelineService {
   filterTimelineItems(
     items: TimelineItem[],
     options: {
-      dateRange?: 'all' | 'today' | 'week' | 'month';
+      dateRange?: DateRange;
       statusFilter?: 'all' | 'overdue' | 'due-soon' | 'upcoming';
     }
   ): TimelineItem[] {
     let filteredItems = items;
-    const { dateRange = 'all', statusFilter = 'all' } = options;
+    const { dateRange = DATE_RANGES.ALL, statusFilter = 'all' } = options;
 
     // Apply date range filter
-    if (dateRange !== 'all') {
-      const now = new Date();
-      const today = startOfDay(now);
-      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-      filteredItems = items.filter(item => {
-        const itemDate = startOfDay(item.date);
-        
-        switch (dateRange) {
-          case 'today':
-            return isToday(itemDate);
-          case 'week':
-            return itemDate >= weekAgo;
-          case 'month':
-            return itemDate >= monthAgo;
-          default:
-            return true;
-        }
-      });
+    if (dateRange !== DATE_RANGES.ALL) {
+      filteredItems = filterByDateRange(
+        items,
+        dateRange,
+        (item) => item.date,
+      );
     }
 
     // Apply status filter
@@ -171,36 +164,7 @@ class TimelineServiceImpl implements TimelineService {
   }
 
   groupTimelineItems(items: TimelineItem[]): TimelineGroup {
-    const groups: TimelineGroup = {};
-    
-    items.forEach(item => {
-      const date = startOfDay(item.date);
-      let groupKey: string;
-      
-      if (isToday(date)) {
-        groupKey = 'Today';
-      } else if (isYesterday(date)) {
-        groupKey = 'Yesterday';
-      } else if (isThisWeek(date)) {
-        groupKey = 'This Week';
-      } else if (isThisMonth(date)) {
-        groupKey = 'This Month';
-      } else {
-        const daysDiff = differenceInDays(new Date(), date);
-        if (daysDiff < 30) {
-          groupKey = 'Last Month';
-        } else {
-          groupKey = 'Older';
-        }
-      }
-      
-      if (!groups[groupKey]) {
-        groups[groupKey] = [];
-      }
-      groups[groupKey].push(item);
-    });
-    
-    return groups;
+    return groupByDateRange(items, (item) => item.date);
   }
 
   getTimelineStats(items: TimelineItem[]) {
