@@ -6,6 +6,13 @@ interface ContactStore {
   contacts: Contact[];
   interactions: Interaction[];
   isLoading: boolean;
+  
+  // Setters for state management
+  setContacts: (contacts: Contact[]) => void;
+  setInteractions: (interactions: Interaction[]) => void;
+  setIsLoading: (loading: boolean) => void;
+  
+  // Legacy methods (to be replaced by service layer)
   addContact: (contact: ContactCreate) => Promise<void>;
   addInteraction: (interaction: InteractionCreate) => Promise<void>;
   updateInteraction: (id: string, updates: Partial<Interaction>) => Promise<void>;
@@ -23,6 +30,11 @@ export const useContactStore = create<ContactStore>((set, get) => ({
   contacts: [],
   interactions: [],
   isLoading: false,
+  
+  // Setters
+  setContacts: (contacts) => set({ contacts }),
+  setInteractions: (interactions) => set({ interactions }),
+  setIsLoading: (loading) => set({ isLoading: loading }),
   addContact: async (contact) => {
     try {
       const response = await fetch('/api/contacts', {

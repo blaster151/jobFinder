@@ -1,8 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useReminderPolling } from '@/hooks/useReminderPolling';
-import { useContactStore } from '@/stores/contactStore';
+import { useNotificationManager } from '@/hooks/useNotificationManager';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,55 +12,18 @@ interface ReminderNotificationProps {
 }
 
 export function ReminderNotification({ show = true }: ReminderNotificationProps) {
-  const [isVisible, setIsVisible] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(0);
-  
-  const { recentlyOverdue, markAsChecked, clearRecentlyOverdue } = useReminderPolling({
-    onNewlyOverdue: (ids) => {
-      setNotificationCount(ids.length);
-      setIsVisible(true);
-      
-      // Auto-hide after 10 seconds
-      setTimeout(() => {
-        setIsVisible(false);
-      }, 10000);
-    },
-  });
+  const {
+    isVisible,
+    notificationCount,
+    overdueReminders,
+    handleDismiss,
+    handleMarkDone,
+    handleDismissAll,
+  } = useNotificationManager();
 
-  const { interactions, contacts } = useContactStore();
-
-  const getOverdueReminders = () => {
-    return recentlyOverdue.map(id => {
-      const interaction = interactions.find(i => i.id === id);
-      const contact = interaction ? contacts.find(c => c.id === interaction.contactId) : null;
-      return { interaction, contact };
-    }).filter(item => item.interaction && item.contact);
-  };
-
-  const handleDismiss = () => {
-    setIsVisible(false);
-  };
-
-  const handleMarkDone = (interactionId: string) => {
-    markAsChecked(interactionId);
-    setNotificationCount(prev => Math.max(0, prev - 1));
-    
-    if (notificationCount <= 1) {
-      setIsVisible(false);
-    }
-  };
-
-  const handleDismissAll = () => {
-    clearRecentlyOverdue();
-    setIsVisible(false);
-    setNotificationCount(0);
-  };
-
-  if (!show || !isVisible || recentlyOverdue.length === 0) {
+  if (!show || !isVisible) {
     return null;
   }
-
-  const overdueReminders = getOverdueReminders();
 
   return (
     <Card className="fixed top-4 right-4 w-96 z-50 bg-background/95 backdrop-blur-sm border-2 border-destructive/20 shadow-lg">

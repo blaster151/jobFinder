@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useContactStore } from '@/stores/contactStore';
+import { useContactActions } from '@/hooks/useContactActions';
 import { Contact } from '@/lib/schemas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ export const ContactForm = ({ contactToEdit, onSubmit }: ContactFormProps) => {
     }
   );
 
-  const { addContact, flagContact, contacts } = useContactStore();
+  const { addContact, flagContact, isLoading, error } = useContactActions();
 
   useEffect(() => {
     if (contactToEdit) {
@@ -46,32 +46,37 @@ export const ContactForm = ({ contactToEdit, onSubmit }: ContactFormProps) => {
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.name.trim()) return;
 
-    const existing = contacts.find((c) => c.id === form.id);
-    if (existing) {
-      flagContact(form.id, form.flagged ?? false);
-      // Could also expose an `updateContact()` method for full editability
-    } else {
-      addContact({
-        ...form,
-        flagged: form.flagged ?? false,
-      });
-    }
+    try {
+      if (form.id) {
+        // Update existing contact
+        await flagContact(form.id, form.flagged ?? false);
+      } else {
+        // Add new contact
+        await addContact({
+          ...form,
+          flagged: form.flagged ?? false,
+        });
+      }
 
-    if (onSubmit) onSubmit();
-    setForm({
-      id: '',
-      name: '',
-      company: '',
-      role: '',
-      email: '',
-      phone: '',
-      linkedin: '',
-      notes: '',
-      flagged: false,
-    });
+      if (onSubmit) onSubmit();
+      setForm({
+        id: '',
+        name: '',
+        company: '',
+        role: '',
+        email: '',
+        phone: '',
+        linkedin: '',
+        notes: '',
+        flagged: false,
+        tags: [],
+      });
+    } catch (error) {
+      console.error('Error saving contact:', error);
+    }
   };
 
   return (

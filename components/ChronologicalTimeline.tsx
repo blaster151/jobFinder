@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { format, isToday, isThisWeek, isThisMonth, isYesterday, startOfDay, differenceInDays } from 'date-fns';
+import { format } from 'date-fns';
 import { 
   Mail, 
   Phone, 
@@ -15,8 +15,8 @@ import {
   Calendar,
   Tag
 } from 'lucide-react';
-import { Interaction } from '@/lib/schemas';
-import { useContactStore } from '@/stores/contactStore';
+import { useTimeline } from '@/hooks/useTimeline';
+import { TimelineItem } from '@/lib/services/timelineService';
 
 interface ChronologicalTimelineProps {
   contactId?: string;
@@ -26,17 +26,7 @@ interface ChronologicalTimelineProps {
   statusFilter?: 'all' | 'overdue' | 'due-soon' | 'upcoming';
 }
 
-interface TimelineItem {
-  id: string;
-  type: 'interaction' | 'reminder';
-  date: Date;
-  title: string;
-  description: string;
-  interaction?: Interaction;
-  isOverdue?: boolean;
-  isDueSoon?: boolean;
-  tags: string[];
-}
+
 
 export function ChronologicalTimeline({ 
   contactId, 
@@ -45,138 +35,13 @@ export function ChronologicalTimeline({
   dateRange = 'all',
   statusFilter = 'all'
 }: ChronologicalTimelineProps) {
-  const { interactions, contacts } = useContactStore();
-
-  const timelineItems = useMemo(() => {
-    const items: TimelineItem[] = [];
-
-    // Filter interactions for specific contact if provided
-    const filteredInteractions = contactId 
-      ? interactions.filter(i => i.contactId === contactId)
-      : interactions;
-
-    // Add interactions
-    if (!showRemindersOnly) {
-      filteredInteractions.forEach(interaction => {
-        const contact = contacts.find(c => c.id === interaction.contactId);
-        const contactName = contact?.name || 'Unknown Contact';
-        
-        items.push({
-          id: interaction.id!,
-          type: 'interaction',
-          date: new Date(interaction.createdAt!),
-          title: `${interaction.type.charAt(0).toUpperCase() + interaction.type.slice(1)} with ${contactName}`,
-          description: interaction.summary,
-          interaction,
-          tags: interaction.tags || [],
-        });
-      });
-    }
-
-    // Add reminders (interactions with followUpRequired)
-    if (!showInteractionsOnly) {
-      const reminders = filteredInteractions.filter(i => i.followUpRequired && i.followUpDueDate);
-      
-      reminders.forEach(interaction => {
-        const contact = contacts.find(c => c.id === interaction.contactId);
-        const contactName = contact?.name || 'Unknown Contact';
-        const dueDate = new Date(interaction.followUpDueDate!);
-        const now = new Date();
-        const isOverdue = dueDate < now;
-        const isDueSoon = dueDate <= new Date(now.getTime() + 24 * 60 * 60 * 1000); // Within 24 hours
-        
-        items.push({
-          id: `reminder-${interaction.id}`,
-          type: 'reminder',
-          date: dueDate,
-          title: `Follow-up: ${interaction.type} with ${contactName}`,
-          description: interaction.summary,
-          interaction,
-          isOverdue,
-          isDueSoon,
-          tags: interaction.tags || [],
-        });
-      });
-    }
-
-    // Apply date range filter
-    let filteredItems = items;
-    if (dateRange !== 'all') {
-      const now = new Date();
-      const today = startOfDay(now);
-      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-      filteredItems = items.filter(item => {
-        const itemDate = startOfDay(item.date);
-        
-        switch (dateRange) {
-          case 'today':
-            return isToday(itemDate);
-          case 'week':
-            return itemDate >= weekAgo;
-          case 'month':
-            return itemDate >= monthAgo;
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      filteredItems = filteredItems.filter(item => {
-        if (item.type !== 'reminder') return false;
-        
-        switch (statusFilter) {
-          case 'overdue':
-            return item.isOverdue;
-          case 'due-soon':
-            return item.isDueSoon;
-          case 'upcoming':
-            return !item.isOverdue && !item.isDueSoon;
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Sort by date (newest first)
-    return filteredItems.sort((a, b) => b.date.getTime() - a.date.getTime());
-  }, [interactions, contacts, contactId, showRemindersOnly, showInteractionsOnly, dateRange, statusFilter]);
-
-  const groupedItems = useMemo(() => {
-    const groups: { [key: string]: TimelineItem[] } = {};
-    
-    timelineItems.forEach(item => {
-      const date = startOfDay(item.date);
-      let groupKey: string;
-      
-      if (isToday(date)) {
-        groupKey = 'Today';
-      } else if (isYesterday(date)) {
-        groupKey = 'Yesterday';
-      } else if (isThisWeek(date)) {
-        groupKey = 'This Week';
-      } else if (isThisMonth(date)) {
-        groupKey = 'This Month';
-      } else {
-        const daysDiff = differenceInDays(new Date(), date);
-        if (daysDiff < 30) {
-          groupKey = 'Last Month';
-        } else {
-          groupKey = 'Older';
-        }
-      }
-      
-      if (!groups[groupKey]) {
-        groups[groupKey] = [];
-      }
-      groups[groupKey].push(item);
-    });
-    
-    return groups;
-  }, [timelineItems]);
+  const { timelineItems, groupedItems, hasItems } = useTimeline({
+    contactId,
+    showRemindersOnly,
+    showInteractionsOnly,
+    dateRange,
+    statusFilter,
+  });
 
   const getItemIcon = (item: TimelineItem) => {
     if (item.type === 'reminder') {
@@ -254,7 +119,7 @@ export function ChronologicalTimeline({
     );
   };
 
-  if (timelineItems.length === 0) {
+  if (!hasItems()) {
     return (
       <Card>
         <CardContent className="p-6 text-center">

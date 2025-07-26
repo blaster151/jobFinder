@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useContactStore } from './contactStore';
-import { getReminderStatus, getRemindersByStatus, clearStatusCache } from '@/lib/reminderUtils';
+import { pollingService } from '@/lib/services/pollingService';
 
 interface ReminderPollingStore {
   // Polling state
@@ -47,71 +47,35 @@ export const useReminderPollingStore = create<ReminderPollingStore>((set, get) =
     
     set({ isPolling: true });
     
-    // Initial check
-    get().checkReminders();
-    
-    // Set up interval
-    const intervalId = setInterval(() => {
+    // Use polling service
+    pollingService.startPolling(get().pollingInterval, () => {
       get().checkReminders();
-    }, get().pollingInterval);
-    
-    // Store interval ID for cleanup
-    (window as any).__reminderPollingInterval = intervalId;
+    });
   },
   
   stopPolling: () => {
     set({ isPolling: false });
-    
-    // Clear interval
-    if ((window as any).__reminderPollingInterval) {
-      clearInterval((window as any).__reminderPollingInterval);
-      (window as any).__reminderPollingInterval = null;
-    }
+    pollingService.stopPolling();
   },
   
   setPollingInterval: (interval: number) => {
     set({ pollingInterval: interval });
-    
-    // Restart polling with new interval if currently polling
-    if (get().isPolling) {
-      get().stopPolling();
-      get().startPolling();
-    }
+    pollingService.setInterval(interval);
   },
   
   checkReminders: () => {
     const { interactions } = useContactStore.getState();
-    const now = new Date();
     
-    // Use the new categorization utility
-    const categorized = getRemindersByStatus(interactions);
-    
-    const currentOverdue = categorized.overdue.map(i => i.id!);
-    const currentDueSoon = categorized.dueSoon.map(i => i.id!);
-    const currentDueToday = categorized.dueToday.map(i => i.id!);
-    
-    // Find newly overdue reminders
-    const newlyOverdue = currentOverdue.filter(id => 
-      !get().overdueReminders.includes(id)
-    );
+    // Use polling service to check reminders
+    const result = pollingService.checkReminders(interactions, get().overdueReminders);
     
     set({
-      overdueReminders: currentOverdue,
-      dueSoonReminders: currentDueSoon,
-      dueTodayReminders: currentDueToday,
-      recentlyOverdue: [...get().recentlyOverdue, ...newlyOverdue],
-      lastChecked: now,
+      overdueReminders: result.currentOverdue,
+      dueSoonReminders: result.dueSoon,
+      dueTodayReminders: result.dueToday,
+      recentlyOverdue: [...get().recentlyOverdue, ...result.newlyOverdue],
+      lastChecked: pollingService.getLastChecked(),
     });
-    
-    // Log if there are newly overdue reminders
-    if (newlyOverdue.length > 0) {
-      console.log(`🔔 ${newlyOverdue.length} reminder(s) became overdue:`, newlyOverdue);
-    }
-    
-    // Clear cache periodically to prevent memory leaks
-    if (Math.random() < 0.1) { // 10% chance to clear cache
-      clearStatusCache();
-    }
   },
   
   markAsChecked: (interactionId: string) => {
