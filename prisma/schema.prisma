@@ -1,0 +1,48 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Contact {
+  id          String   @id @default(uuid())
+  name        String
+  company     String?
+  role        String?
+  email       String?
+  phone       String?
+  linkedin    String?
+  notes       String?
+  flagged     Boolean  @default(false)
+  tags        String   @default("[]") // JSON array of tags
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  interactions Interaction[]
+
+  @@map("contacts")
+}
+
+model Interaction {
+  id                String   @id @default(uuid())
+  contactId         String
+  jobId             String?
+  type              String
+  summary           String
+  followUpRequired  Boolean  @default(false)
+  followUpDueDate   DateTime?
+  isDone            Boolean  @default(false)
+  tags              String   @default("[]") // JSON array of tags
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@map("interactions")
+}
